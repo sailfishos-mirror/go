@@ -204,15 +204,19 @@ func init() {
 
 		fpload    = regInfo{inputs: []regMask{gpspsb, 0}, outputs: fponly}
 		fploadidx = regInfo{inputs: []regMask{gpspsb, gpsp, 0}, outputs: fponly}
+		vload     = regInfo{inputs: []regMask{gpspsb, 0}, outputs: vonly}
+		wload     = regInfo{inputs: []regMask{gpspsb, 0}, outputs: wonly}
 
 		fpstore    = regInfo{inputs: []regMask{gpspsb, fp, 0}}
 		fpstoreidx = regInfo{inputs: []regMask{gpspsb, gpsp, fp, 0}}
+		vstore     = regInfo{inputs: []regMask{gpspsb, vz, 0}}
+		wstore     = regInfo{inputs: []regMask{gpspsb, wz, 0}}
 
 		// masked loads/stores, vector register or mask register
 		vloadv  = regInfo{inputs: []regMask{gpspsb, v, 0}, outputs: vonly}
-		vstorev = regInfo{inputs: []regMask{gpspsb, v, v, 0}}
-		vloadk  = regInfo{inputs: []regMask{gpspsb, mask, 0}, outputs: vonly}
-		vstorek = regInfo{inputs: []regMask{gpspsb, mask, v, 0}}
+		vstorev = regInfo{inputs: []regMask{gpspsb, v, vz, 0}}
+		wloadk  = regInfo{inputs: []regMask{gpspsb, mask, 0}, outputs: wonly}
+		wstorek = regInfo{inputs: []regMask{gpspsb, mask, wz, 0}}
 
 		v01     = regInfo{inputs: nil, outputs: vonly}
 		v11     = regInfo{inputs: vonly, outputs: vonly}            // used in resultInArg0 ops, arg0 must not be x15
@@ -1340,14 +1344,14 @@ func init() {
 		{name: "PMOVMSKB", argLength: 1, reg: fpgp, asm: "PMOVMSKB"},
 
 		// SIMD ops
-		{name: "VMOVDQUload128", argLength: 2, reg: fpload, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1 = mem
-		{name: "VMOVDQUstore128", argLength: 3, reg: fpstore, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg1, arg2 = mem
+		{name: "VMOVDQUload128", argLength: 2, reg: vload, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1 = mem
+		{name: "VMOVDQUstore128", argLength: 3, reg: vstore, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg1, arg2 = mem
 
-		{name: "VMOVDQUload256", argLength: 2, reg: fpload, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1 = mem
-		{name: "VMOVDQUstore256", argLength: 3, reg: fpstore, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg1, arg2 = mem
+		{name: "VMOVDQUload256", argLength: 2, reg: vload, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1 = mem
+		{name: "VMOVDQUstore256", argLength: 3, reg: vstore, asm: "VMOVDQU", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg1, arg2 = mem
 
-		{name: "VMOVDQUload512", argLength: 2, reg: fpload, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1 = mem
-		{name: "VMOVDQUstore512", argLength: 3, reg: fpstore, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg1, arg2 = mem
+		{name: "VMOVDQUload512", argLength: 2, reg: wload, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1 = mem
+		{name: "VMOVDQUstore512", argLength: 3, reg: wstore, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg1, arg2 = mem
 
 		// AVX2 32 and 64-bit element int-vector masked moves.
 		{name: "VPMASK32load128", argLength: 3, reg: vloadv, asm: "VPMASKMOVD", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=integer mask, arg2 = mem
@@ -1361,14 +1365,14 @@ func init() {
 		{name: "VPMASK64store256", argLength: 4, reg: vstorev, asm: "VPMASKMOVQ", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=integer mask, arg3 = mem
 
 		// AVX512 8-64-bit element mask-register masked moves
-		{name: "VPMASK8load512", argLength: 3, reg: vloadk, asm: "VMOVDQU8", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},      // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
-		{name: "VPMASK8store512", argLength: 4, reg: vstorek, asm: "VMOVDQU8", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"},   // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
-		{name: "VPMASK16load512", argLength: 3, reg: vloadk, asm: "VMOVDQU16", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
-		{name: "VPMASK16store512", argLength: 4, reg: vstorek, asm: "VMOVDQU16", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
-		{name: "VPMASK32load512", argLength: 3, reg: vloadk, asm: "VMOVDQU32", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
-		{name: "VPMASK32store512", argLength: 4, reg: vstorek, asm: "VMOVDQU32", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
-		{name: "VPMASK64load512", argLength: 3, reg: vloadk, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
-		{name: "VPMASK64store512", argLength: 4, reg: vstorek, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
+		{name: "VPMASK8load512", argLength: 3, reg: wloadk, asm: "VMOVDQU8", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},      // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
+		{name: "VPMASK8store512", argLength: 4, reg: wstorek, asm: "VMOVDQU8", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"},   // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
+		{name: "VPMASK16load512", argLength: 3, reg: wloadk, asm: "VMOVDQU16", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
+		{name: "VPMASK16store512", argLength: 4, reg: wstorek, asm: "VMOVDQU16", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
+		{name: "VPMASK32load512", argLength: 3, reg: wloadk, asm: "VMOVDQU32", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
+		{name: "VPMASK32store512", argLength: 4, reg: wstorek, asm: "VMOVDQU32", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
+		{name: "VPMASK64load512", argLength: 3, reg: wloadk, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Read"},    // load from arg0+auxint+aux, arg1=k mask, arg2 = mem
+		{name: "VPMASK64store512", argLength: 4, reg: wstorek, asm: "VMOVDQU64", aux: "SymOff", faultOnNilArg0: true, symEffect: "Write"}, // store, *(arg0+auxint+aux) = arg2, arg1=k mask, arg3 = mem
 
 		// AVX512 moves between int-vector and mask registers
 		{name: "VPMOVMToVec8x16", argLength: 1, reg: kv, asm: "VPMOVM2B"},
@@ -1503,7 +1507,7 @@ func init() {
 		ParamFloatRegNames: "X0 X1 X2 X3 X4 X5 X6 X7 X8 X9 X10 X11 X12 X13 X14",
 		gpregmask:          gp,
 		fpregmask:          fp,
-		specialregmask:     mask,
+		specialregmask:     mask | (w &^ v),
 		framepointerreg:    int8(num["BP"]),
 		linkreg:            -1, // not used
 	})
